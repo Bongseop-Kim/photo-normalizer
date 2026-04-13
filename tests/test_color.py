@@ -75,3 +75,29 @@ def test_step0_dry_run_skips_profile_conversion(tmp_path, monkeypatch):
     result = step0_color_normalize(record)
     assert result.work_path == original_path
     assert result.measurements["profile_converted"] is False
+
+
+def test_detect_icc_profile_raises_clear_error_on_timeout(tmp_path, monkeypatch):
+    image_path = tmp_path / "timeout.jpg"
+    image_path.touch()
+
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr("normalizer.color.subprocess.run", fake_run)
+
+    with pytest.raises(RuntimeError, match="ImageMagick command timed out"):
+        detect_icc_profile(image_path)
+
+
+def test_step0_conversion_raises_clear_error_on_timeout(tmp_path, monkeypatch):
+    record = _record(tmp_path)
+    monkeypatch.setattr("normalizer.color.detect_icc_profile", lambda _: "Adobe RGB")
+
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr("normalizer.color.subprocess.run", fake_run)
+
+    with pytest.raises(RuntimeError, match="ImageMagick command timed out"):
+        step0_color_normalize(record)

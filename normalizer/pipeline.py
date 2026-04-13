@@ -20,7 +20,25 @@ from normalizer.transform import (
 _SUFFIXES = {".jpg", ".jpeg", ".png", ".tif", ".tiff"}
 
 
+def _paths_conflict(input_dir: Path, output_dir: Path) -> bool:
+    if input_dir == output_dir:
+        return True
+    return input_dir.is_relative_to(output_dir) or output_dir.is_relative_to(input_dir)
+
+
 def run_pipeline(input_dir: Path, output_dir: Path, config: NormalizerConfig) -> BatchResult:
+    input_dir = input_dir.resolve()
+    output_dir = output_dir.resolve()
+    if _paths_conflict(input_dir, output_dir):
+        if input_dir == output_dir:
+            raise ValueError(
+                f"input_dir and output_dir must not be the same path: {input_dir}"
+            )
+        raise ValueError(
+            "input_dir and output_dir must not contain each other: "
+            f"input_dir={input_dir}, output_dir={output_dir}"
+        )
+
     output_dir.mkdir(parents=True, exist_ok=True)
     temp_dir = output_dir / ".tmp"
     temp_dir.mkdir(exist_ok=True)
@@ -95,7 +113,12 @@ def run_pipeline(input_dir: Path, output_dir: Path, config: NormalizerConfig) ->
         try:
             step2_rotate(record, reference_angle=reference_angle)
             if record.measurements.get("angle_corrected"):
-                result = detect_subject(record.work_path, corner_sample_size=config.corner_sample_size)
+                result = detect_subject(
+                    record.work_path,
+                    morphology_enabled=config.morphology_enabled,
+                    morphology_kernel_size=config.morphology_kernel_size,
+                    corner_sample_size=config.corner_sample_size,
+                )
                 if result is None:
                     raise RuntimeError(
                         "re-detect failed "

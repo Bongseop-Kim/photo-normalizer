@@ -89,3 +89,67 @@ def test_rotation_redetect_failure_marks_step2_error(batch, tmp_path, monkeypatc
         record.error and record.error.startswith("STEP 2 error:")
         for record in result.records
     )
+
+
+def test_pipeline_rejects_same_input_and_output_dir(batch):
+    with pytest.raises(ValueError, match="must not be the same"):
+        run_pipeline(batch, batch, NormalizerConfig(dry_run=True))
+
+
+def test_pipeline_rejects_nested_output_dir(batch):
+    output_dir = batch / "nested-output"
+
+    with pytest.raises(ValueError, match="must not contain each other"):
+        run_pipeline(batch, output_dir, NormalizerConfig(dry_run=True))
+
+
+def test_pipeline_redetect_uses_same_detection_parameters(tmp_path, monkeypatch):
+    from normalizer import pipeline as pipeline_module
+
+    input_dir = tmp_path / "input"
+    input_dir.mkdir()
+    make_product_image(input_dir, filename="single.jpg", angle=1.5)
+    output_dir = tmp_path / "norm"
+    config = NormalizerConfig(
+        dry_run=True,
+        morphology_enabled=True,
+        morphology_kernel_size=7,
+        corner_sample_size=42,
+    )
+    calls: list[dict] = []
+
+    def fake_detect(image_path, **kwargs):
+        calls.append(kwargs)
+        return ((10, 10, 100, 100), 5.0, 240.0)
+
+    def fake_step0(record):
+        return record
+
+    def fake_step2_rotate(record, reference_angle):
+        record.measurements["angle_corrected"] = True
+        record.measurements["angle_delta"] = 5.0
+        return record
+
+    def fake_step3(record, bbox):
+        record.measurements["step3_bbox"] = list(bbox)
+        return record
+
+    def fake_step4(record, reference_bg):
+        return record
+
+    def fake_step5(record, output_path):
+        return record
+
+    monkeypatch.setattr(pipeline_module, "detect_subject", fake_detect)
+    monkeypatch.setattr(pipeline_module, "step0_color_normalize", fake_step0)
+    monkeypatch.setattr(pipeline_module, "step2_rotate", fake_step2_rotate)
+    monkeypatch.setattr(pipeline_module, "step3_crop_resize", fake_step3)
+    monkeypatch.setattr(pipeline_module, "step4_brightness", fake_step4)
+    monkeypatch.setattr(pipeline_module, "step5_finalize", fake_step5)
+    monkeypatch.setattr(pipeline_module, "write_report", lambda *args, **kwargs: None)
+    monkeypatch.setattr(pipeline_module, "render_preview", lambda *args, **kwargs: None)
+
+    run_pipeline(input_dir, output_dir, config)
+
+    assert len(calls) == 2
+    assert calls[0] == calls[1]

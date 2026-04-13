@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 from pathlib import Path
+import subprocess
+
+import pytest
 
 from normalizer.models import ImageRecord, NormalizerConfig
-from normalizer.transform import step4_brightness, step5_finalize
+from normalizer.transform import _run, step2_rotate, step4_brightness, step5_finalize
 
 
 def _record(tmp_path) -> ImageRecord:
@@ -47,3 +50,26 @@ def test_step5_finalize_respects_strip_and_preserve_flags(tmp_path, monkeypatch)
     assert commands
     assert "-strip" not in commands[0]
     assert "-profile" not in commands[0]
+
+
+def test_step2_rotate_dry_run_does_not_mark_angle_corrected(tmp_path):
+    record = _record(tmp_path)
+    record.config.dry_run = True
+    record.measurements["original_angle"] = 0.0
+
+    step2_rotate(record, reference_angle=10.0)
+
+    assert record.measurements["angle_corrected"] is False
+    assert record.work_path == tmp_path / "work.jpg"
+
+
+def test_run_raises_clear_error_on_timeout(monkeypatch):
+    cmd = ["magick", "input.jpg", "-rotate", "5", "output.jpg"]
+
+    def fake_run(*args, **kwargs):
+        raise subprocess.TimeoutExpired(cmd=args[0], timeout=kwargs["timeout"])
+
+    monkeypatch.setattr("normalizer.transform.subprocess.run", fake_run)
+
+    with pytest.raises(RuntimeError, match="ImageMagick command timed out"):
+        _run(cmd)

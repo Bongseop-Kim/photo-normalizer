@@ -5,14 +5,28 @@ from pathlib import Path
 
 from normalizer.models import ImageRecord
 
+IMAGE_MAGICK_TIMEOUT = 30
+
+
+def _run_magick(command: list[str], *, image_path: Path, text: bool = False) -> subprocess.CompletedProcess:
+    try:
+        return subprocess.run(
+            command,
+            capture_output=True,
+            check=True,
+            text=text,
+            timeout=IMAGE_MAGICK_TIMEOUT,
+        )
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(
+            "ImageMagick command timed out "
+            f"for {image_path}: {' '.join(command)}"
+        ) from exc
+
 
 def detect_icc_profile(image_path: Path) -> str:
-    result = subprocess.run(
-        ["magick", "identify", "-verbose", str(image_path)],
-        capture_output=True,
-        check=True,
-        text=True,
-    )
+    command = ["magick", "identify", "-verbose", str(image_path)]
+    result = _run_magick(command, image_path=image_path, text=True)
     lines = result.stdout.splitlines()
     for line in lines:
         if "icc:description:" in line.lower():
@@ -44,10 +58,9 @@ def step0_color_normalize(record: ImageRecord) -> ImageRecord:
         return record
 
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_srgb")
-    subprocess.run(
+    _run_magick(
         ["magick", str(record.work_path), "-profile", record.config.icc_profile, str(output_path)],
-        check=True,
-        capture_output=True,
+        image_path=record.work_path,
     )
     record.work_path = output_path
     record.measurements["profile_converted"] = True

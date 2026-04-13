@@ -5,6 +5,8 @@ from pathlib import Path
 
 from normalizer.models import ImageRecord
 
+IMAGE_MAGICK_TIMEOUT = 30
+
 
 def compute_crop_rect(
     bbox: tuple[int, int, int, int],
@@ -29,7 +31,14 @@ def compute_brightness_scale(image_bg: float, reference_bg: float) -> float:
 
 
 def _run(cmd: list[str]) -> None:
-    subprocess.run(cmd, check=True, capture_output=True)
+    try:
+        subprocess.run(cmd, check=True, capture_output=True, timeout=IMAGE_MAGICK_TIMEOUT)
+    except subprocess.TimeoutExpired as exc:
+        image_path = cmd[1] if len(cmd) > 1 else "unknown"
+        raise RuntimeError(
+            "ImageMagick command timed out "
+            f"for {image_path}: {' '.join(cmd)}"
+        ) from exc
 
 
 def step2_rotate(record: ImageRecord, reference_angle: float) -> ImageRecord:
@@ -45,7 +54,7 @@ def step2_rotate(record: ImageRecord, reference_angle: float) -> ImageRecord:
     if not record.config.dry_run:
         _run(["magick", str(record.work_path), "-rotate", str(delta), str(output_path)])
         record.work_path = output_path
-    record.measurements["angle_corrected"] = True
+        record.measurements["angle_corrected"] = True
     return record
 
 
