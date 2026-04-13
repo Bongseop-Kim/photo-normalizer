@@ -64,7 +64,7 @@ uv run python normalize.py ./images --dry-run --output ./dry-run
 
 ## 설정 파일
 
-기본 설정은 프로젝트 루트의 [config.yaml](/Users/gimbongseob/git/photo-normalizer/config.yaml)을 사용합니다.
+기본 설정은 프로젝트 루트의 [`config.yaml`](./config.yaml)을 사용합니다.
 
 다른 설정 파일을 지정하려면:
 

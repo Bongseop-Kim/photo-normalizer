@@ -90,7 +90,7 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_bright")
     if not record.config.dry_run:
         if record.config.brightness_method == "level":
-            white_pct = (image_bg / 255.0) * 100.0
+            white_pct = max(0.0, min(100.0, (reference_bg / 255.0) * 100.0))
             _run(
                 [
                     "magick",
@@ -121,20 +121,20 @@ def step5_finalize(record: ImageRecord, output_path: Path) -> ImageRecord:
 
     canvas_width = record.config.canvas_width
     canvas_height = record.config.canvas_height
-    _run(
-        [
-            "magick",
-            str(record.work_path),
-            "-background",
-            record.config.background,
-            "-gravity",
-            "center",
-            "-extent",
-            f"{canvas_width}x{canvas_height}",
-            "-strip",
-            "-profile",
-            record.config.icc_profile,
-            str(output_path),
-        ]
-    )
+    args = [
+        "magick",
+        str(record.work_path),
+        "-background",
+        record.config.background,
+        "-gravity",
+        "center",
+        "-extent",
+        f"{canvas_width}x{canvas_height}",
+    ]
+    if record.config.strip_exif:
+        args.append("-strip")
+    if record.config.preserve_icc:
+        args.extend(["-profile", record.config.icc_profile])
+    args.append(str(output_path))
+    _run(args)
     return record

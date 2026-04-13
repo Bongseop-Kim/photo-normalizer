@@ -69,3 +69,28 @@ def test_find_config_falls_back_to_input_dir(tmp_path):
     config_path = tmp_path / "config.yaml"
     config_path.touch()
     assert find_config(tmp_path) == config_path
+
+
+def test_find_config_raises_for_missing_explicit_path(tmp_path):
+    missing = tmp_path / "missing.yaml"
+    with pytest.raises(FileNotFoundError, match=str(missing)):
+        find_config(tmp_path, explicit=missing)
+
+
+def test_icc_profile_resolves_relative_to_config_directory(tmp_path):
+    config_dir = tmp_path / "nested"
+    config_dir.mkdir()
+    icc = config_dir / "custom.icc"
+    icc.touch()
+    config_path = config_dir / "config.yaml"
+    config_path.write_text(
+        textwrap.dedent(
+            """
+            color_management:
+              icc_profile: ./custom.icc
+            """
+        )
+    )
+
+    config = load_config(config_path=config_path)
+    assert Path(config.icc_profile) == icc.resolve()

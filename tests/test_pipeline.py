@@ -61,3 +61,31 @@ def test_corrupt_file_skipped(batch, tmp_path):
     assert (output_dir / "red.jpg").exists()
     errors = [record for record in result.records if record.error and record.source_path.name == "corrupt.jpg"]
     assert errors
+
+
+def test_rotation_redetect_failure_marks_step2_error(batch, tmp_path, monkeypatch):
+    from normalizer import pipeline as pipeline_module
+
+    output_dir = tmp_path / "norm"
+    original_detect = pipeline_module.detect_subject
+    call_count = {"count": 0}
+
+    def fake_detect(*args, **kwargs):
+        call_count["count"] += 1
+        if call_count["count"] <= 3:
+            return original_detect(*args, **kwargs)
+        return None
+
+    def fake_step2_rotate(record, reference_angle):
+        record.measurements["angle_corrected"] = True
+        record.measurements["angle_delta"] = 1.0
+        return record
+
+    monkeypatch.setattr(pipeline_module, "detect_subject", fake_detect)
+    monkeypatch.setattr(pipeline_module, "step2_rotate", fake_step2_rotate)
+
+    result = run_pipeline(batch, output_dir, NormalizerConfig())
+    assert any(
+        record.error and record.error.startswith("STEP 2 error:")
+        for record in result.records
+    )

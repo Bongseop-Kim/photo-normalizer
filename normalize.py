@@ -32,7 +32,12 @@ def main() -> None:
         raise SystemExit(1)
 
     output_dir = (args.output or input_dir / "normalized").resolve()
-    config_path = find_config(input_dir, explicit=args.config)
+    if args.output is not None and output_dir == input_dir:
+        raise SystemExit("Error: output directory must be different from input directory")
+    try:
+        config_path = find_config(input_dir, explicit=args.config)
+    except FileNotFoundError as exc:
+        raise SystemExit(f"Error: invalid --config path: {args.config}") from exc
 
     overrides = {
         key: value

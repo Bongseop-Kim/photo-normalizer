@@ -34,9 +34,10 @@ def detect_subject(
         _, binary = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
 
     if morphology_enabled:
+        kernel_size = max(1, int(morphology_kernel_size))
         kernel = cv2.getStructuringElement(
             cv2.MORPH_RECT,
-            (morphology_kernel_size, morphology_kernel_size),
+            (kernel_size, kernel_size),
         )
         binary = cv2.morphologyEx(binary, cv2.MORPH_OPEN, kernel)
 
@@ -56,7 +57,7 @@ def detect_subject(
     raw_angle = float(min_rect[2])
     angle = raw_angle + 90.0 if rect_w > rect_h else raw_angle
 
-    sample_size = min(corner_sample_size, height // 4, width // 4)
+    sample_size = max(1, min(int(corner_sample_size), height // 4, width // 4))
     corners = [
         gray[0:sample_size, 0:sample_size],
         gray[0:sample_size, width - sample_size : width],

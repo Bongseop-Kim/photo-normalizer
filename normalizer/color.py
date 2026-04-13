@@ -39,6 +39,10 @@ def step0_color_normalize(record: ImageRecord) -> ImageRecord:
         record.measurements["profile_converted"] = False
         return record
 
+    if record.config.dry_run:
+        record.measurements["profile_converted"] = False
+        return record
+
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_srgb")
     subprocess.run(
         ["magick", str(record.work_path), "-profile", record.config.icc_profile, str(output_path)],

@@ -47,8 +47,10 @@ def load_config(
     overrides: dict[str, Any] | None = None,
 ) -> NormalizerConfig:
     raw: dict[str, Any] = {}
+    config_dir: Path | None = None
     if config_path and config_path.exists():
         raw = yaml.safe_load(config_path.read_text()) or {}
+        config_dir = config_path.resolve().parent
 
     kwargs: dict[str, Any] = {}
     for field_name, yaml_keys in _YAML_MAP.items():
@@ -64,12 +66,15 @@ def load_config(
     config = NormalizerConfig(**kwargs)
     icc_path = Path(config.icc_profile)
     if not icc_path.is_absolute():
-        config.icc_profile = str((_PROJECT_ROOT / icc_path).resolve())
+        base_dir = config_dir or _PROJECT_ROOT
+        config.icc_profile = str((base_dir / icc_path).resolve())
     return config
 
 
 def find_config(input_dir: Path, explicit: Path | None = None) -> Path | None:
-    if explicit and explicit.exists():
+    if explicit is not None:
+        if not explicit.exists():
+            raise FileNotFoundError(f"Config file does not exist: {explicit}")
         return explicit
 
     candidate = input_dir / "config.yaml"

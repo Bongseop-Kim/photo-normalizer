@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from normalizer.models import BatchResult, ImageRecord, NormalizerConfig
 
 
@@ -36,3 +38,22 @@ def test_batch_result(tmp_path):
     )
     batch = BatchResult(config_snapshot={}, reference={}, records=[record])
     assert len(batch.records) == 1
+
+
+@pytest.mark.parametrize(
+    ("kwargs", "message"),
+    [
+        ({"target_ratio": 0}, "target_ratio"),
+        ({"morphology_enabled": True, "morphology_kernel_size": 0}, "morphology_kernel_size"),
+        ({"corner_sample_size": -1}, "corner_sample_size"),
+        ({"max_upscale": 0}, "max_upscale"),
+        ({"trim_fuzz": "abc"}, "trim_fuzz"),
+        ({"brightness_method": "bad"}, "brightness_method"),
+        ({"brightness_reference": "bad"}, "brightness_reference"),
+        ({"angle_reference": "bad"}, "angle_reference"),
+        ({"morphology_operation": "bad"}, "morphology_operation"),
+    ],
+)
+def test_config_validation_rejects_invalid_values(kwargs, message):
+    with pytest.raises(ValueError, match=message):
+        NormalizerConfig(**kwargs)

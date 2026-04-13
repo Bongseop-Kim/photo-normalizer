@@ -22,7 +22,8 @@ def make_product_image(
     box = cv2.boxPoints(((center[0], center[1]), (rect_w, rect_h), angle))
     cv2.fillPoly(img, [np.intp(box)], (product_color,) * 3)
     path = Path(dest_dir) / filename
-    cv2.imwrite(str(path), img)
+    if not cv2.imwrite(str(path), img):
+        raise RuntimeError(f"Failed to write test image: {path}")
     return str(path)
 
 

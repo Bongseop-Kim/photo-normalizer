@@ -96,9 +96,13 @@ def run_pipeline(input_dir: Path, output_dir: Path, config: NormalizerConfig) ->
             step2_rotate(record, reference_angle=reference_angle)
             if record.measurements.get("angle_corrected"):
                 result = detect_subject(record.work_path, corner_sample_size=config.corner_sample_size)
-                record.measurements["corrected_bbox"] = (
-                    list(result[0]) if result else record.measurements["original_bbox"]
-                )
+                if result is None:
+                    raise RuntimeError(
+                        "re-detect failed "
+                        f"for {record.source_path} after rotation toward "
+                        f"reference_angle={reference_angle:.2f}"
+                    )
+                record.measurements["corrected_bbox"] = list(result[0])
             else:
                 record.measurements["corrected_bbox"] = record.measurements["original_bbox"]
         except Exception as exc:  # pragma: no cover - pipeline guard

@@ -36,7 +36,7 @@
 
 <div id="tab-grid" class="panel active">
   <div class="grid">
-    {% for item in items %}
+    {% for item in success_items %}
     <div class="grid-item">
       <img src="{{ item.normalized_rel }}" alt="{{ item.filename }}" loading="lazy">
       <div class="caption">{{ item.filename }}</div>
@@ -47,13 +47,13 @@
 
 <div id="tab-ba" class="panel">
   <div class="ba-selector">
-    {% for item in items %}
+    {% for item in success_items %}
     <button onclick="selectBA({{ loop.index0 }})" id="ba-btn-{{ loop.index0 }}"{% if loop.first %} class="active"{% endif %}>{{ item.filename }}</button>
     {% endfor %}
   </div>
   <div class="ba-container" id="ba-container">
-    <img id="ba-before" src="{{ items[0].original_rel if items else '' }}" alt="before">
-    <img id="ba-after" class="ba-after" src="{{ items[0].normalized_rel if items else '' }}" alt="after">
+    <img id="ba-before" src="{{ success_items[0].original_rel if success_items else '' }}" alt="before">
+    <img id="ba-after" class="ba-after" src="{{ success_items[0].normalized_rel if success_items else '' }}" alt="after">
     <div class="ba-divider" id="ba-divider"></div>
   </div>
 </div>
@@ -78,7 +78,7 @@
         <td>{{ item.measurements.get('resize_scale', '-') }}</td>
         <td>
           {% if item.error %}{{ item.error }}
-          {% elif item.warnings %}{{ item.warnings | join('<br>') }}
+          {% elif item.warnings %}{{ item.warnings | join('<br>') | safe }}
           {% else %}-{% endif %}
         </td>
       </tr>
@@ -88,7 +88,7 @@
 </div>
 
 <script>
-const ITEMS = {{ items_json }};
+const ITEMS = {{ items_json | tojson }};
 
 function showTab(name, btn) {
   document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
