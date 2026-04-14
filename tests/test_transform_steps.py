@@ -52,17 +52,17 @@ def test_step4_level_allows_white_point_above_100(tmp_path, monkeypatch):
 
 
 def test_step4_level_handles_zero_reference_background(tmp_path, monkeypatch):
+    from unittest.mock import Mock
+
     record = _record(tmp_path)
     record.measurements["original_brightness_mean"] = 25.0
-    commands: list[list[str]] = []
-
-    monkeypatch.setattr("normalizer.transform._run", lambda cmd: commands.append(cmd))
+    run_mock = Mock()
+    monkeypatch.setattr("normalizer.transform._run", run_mock)
 
     step4_brightness(record, reference_bg=0.0)
 
-    assert commands
-    assert commands[0][2] == "-level"
-    assert commands[0][3] == "0%,0.00%"
+    run_mock.assert_not_called()
+    assert "reference_bg <= 0; skipping brightness level adjustment" in record.warnings
 
 
 def test_step5_finalize_respects_strip_and_preserve_flags(tmp_path, monkeypatch):

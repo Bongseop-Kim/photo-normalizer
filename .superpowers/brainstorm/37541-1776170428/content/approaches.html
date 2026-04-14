@@ -1,0 +1,83 @@
+<h2>앱 구조 접근 방식 3가지</h2>
+<p class="subtitle">SwiftUI 기반, Core Image + Vision 프레임워크 사용은 공통</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>마법사(Wizard) 흐름</h3>
+      <p>단계별 화면 전환: 폴더 선택 → 설정 → 처리 → 결과 검수</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">화면 흐름</div>
+        <div class="mockup-body" style="display:flex;gap:8px;align-items:center;padding:12px;flex-wrap:wrap">
+          <div style="text-align:center;flex:1;min-width:80px">
+            <div style="background:#e8f4fd;border-radius:8px;padding:10px 6px;font-size:0.8em;font-weight:600">① 폴더 선택<br><span style="font-weight:400;color:#666">드래그 앤 드롭</span></div>
+          </div>
+          <div style="color:#999">→</div>
+          <div style="text-align:center;flex:1;min-width:80px">
+            <div style="background:#e8f4fd;border-radius:8px;padding:10px 6px;font-size:0.8em;font-weight:600">② 설정 확인<br><span style="font-weight:400;color:#666">target ratio 등</span></div>
+          </div>
+          <div style="color:#999">→</div>
+          <div style="text-align:center;flex:1;min-width:80px">
+            <div style="background:#e8f4fd;border-radius:8px;padding:10px 6px;font-size:0.8em;font-weight:600">③ 처리 중<br><span style="font-weight:400;color:#666">진행률 표시</span></div>
+          </div>
+          <div style="color:#999">→</div>
+          <div style="text-align:center;flex:1;min-width:80px">
+            <div style="background:#e8f4fd;border-radius:8px;padding:10px 6px;font-size:0.8em;font-weight:600">④ 결과 검수<br><span style="font-weight:400;color:#666">Before/After</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:10px;font-size:0.85em">
+        <div class="pros"><h4>장점</h4><ul><li>워크플로우가 직관적, 익히기 쉬움</li><li>각 단계 목적이 명확</li></ul></div>
+        <div class="cons"><h4>단점</h4><ul><li>재처리 시 처음부터 다시 시작해야 함</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>단일 창 (사이드바 + 메인)</h3>
+      <p>왼쪽 파일 목록 + 오른쪽 처리/검수 영역이 한 화면에 공존</p>
+      <div class="mockup" style="margin-top:12px">
+        <div class="mockup-header">레이아웃</div>
+        <div class="mockup-body" style="display:flex;gap:0;padding:0;height:100px">
+          <div style="width:35%;background:#f0f0f0;padding:10px;font-size:0.78em;border-right:1px solid #ddd">
+            <div style="font-weight:600;margin-bottom:6px">📁 파일 목록</div>
+            <div style="background:#d4edda;border-radius:4px;padding:3px 6px;margin-bottom:3px;font-size:0.9em">✓ img_001.jpg</div>
+            <div style="background:#fff3cd;border-radius:4px;padding:3px 6px;margin-bottom:3px;font-size:0.9em">⚠ img_002.jpg</div>
+            <div style="padding:3px 6px;font-size:0.9em">img_003.jpg</div>
+          </div>
+          <div style="flex:1;padding:10px;font-size:0.78em">
+            <div style="font-weight:600;margin-bottom:6px">Before / After 비교</div>
+            <div style="display:flex;gap:6px;height:60px">
+              <div style="flex:1;background:#eee;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#999;font-size:0.85em">원본</div>
+              <div style="flex:1;background:#ddf0dd;border-radius:4px;display:flex;align-items:center;justify-content:center;color:#666;font-size:0.85em">보정</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="pros-cons" style="margin-top:10px;font-size:0.85em">
+        <div class="pros"><h4>장점</h4><ul><li>파일 간 이동이 자유로움</li><li>전문가 도구 느낌</li></ul></div>
+        <div class="cons"><h4>단점</h4><ul><li>초기 설계 복잡도가 높음</li><li>첫 사용자에게 다소 낯설 수 있음</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>문서 기반 앱 (NSDocument)</h3>
+      <p>배치 세션을 문서로 저장·복원. 여러 작업 세션 관리 가능</p>
+      <div class="pros-cons" style="margin-top:10px;font-size:0.85em">
+        <div class="pros"><h4>장점</h4><ul><li>App Store 심사에 가장 유리</li><li>재처리·이력 관리 자연스러움</li><li>iCloud 자동 백업 가능</li></ul></div>
+        <div class="cons"><h4>단점</h4><ul><li>NSDocument 아키텍처 러닝커브 높음</li><li>현재 CLI 구조와 가장 거리가 멀음</li><li>지금 당장 필요한 기능은 아님</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:20px;padding:14px;background:#f8f9fa;border-radius:8px;border-left:4px solid #4a90d9">
+  <strong>추천: A (마법사) → 나중에 B로 확장</strong><br>
+  <span style="font-size:0.9em;color:#555">처음엔 Wizard로 빠르게 완성하고, 익숙해지면 사이드바 레이아웃으로 리팩토링하는 경로가 가장 현실적입니다. C는 App Store 제출 직전에 고려.</span>
+</div>
