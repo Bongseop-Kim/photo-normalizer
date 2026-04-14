@@ -92,7 +92,7 @@ def test_step2_rotate_dry_run_does_not_mark_angle_corrected(tmp_path):
     assert record.work_path == tmp_path / "work.jpg"
 
 
-def test_step3_crop_resize_formats_negative_offsets(tmp_path, monkeypatch):
+def test_step3_crop_resize_clamps_negative_offsets(tmp_path, monkeypatch):
     record = _record(tmp_path)
     record.config.canvas_width = 1000
     commands: list[list[str]] = []
@@ -103,7 +103,7 @@ def test_step3_crop_resize_formats_negative_offsets(tmp_path, monkeypatch):
 
     assert commands
     assert commands[0][2] == "-crop"
-    assert commands[0][3] == "500x500-50-50"
+    assert commands[0][3] == "500x500+0+0"
 
 
 def test_run_raises_clear_error_on_timeout(monkeypatch):

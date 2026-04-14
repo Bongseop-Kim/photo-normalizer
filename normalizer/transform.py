@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import subprocess
 from pathlib import Path
 
@@ -24,6 +25,10 @@ def compute_crop_rect(
             "canvas_width and canvas_height must be > 0, "
             f"got canvas_width={canvas_width}, canvas_height={canvas_height}"
         )
+    if not math.isfinite(target_ratio) or target_ratio <= 0:
+        raise ValueError(
+            f"target_ratio must be a positive finite number, got target_ratio={target_ratio!r}"
+        )
     subject_cx = x + width // 2
     subject_cy = y + height // 2
     scale_x = (canvas_width * target_ratio) / width
@@ -31,8 +36,8 @@ def compute_crop_rect(
     scale = min(scale_x, scale_y)
     size_w = int(round(canvas_width / scale))
     size_h = int(round(canvas_height / scale))
-    crop_x = subject_cx - size_w // 2
-    crop_y = subject_cy - size_h // 2
+    crop_x = max(0, subject_cx - size_w // 2)
+    crop_y = max(0, subject_cy - size_h // 2)
     return crop_x, crop_y, size_w, size_h, scale
 
 
