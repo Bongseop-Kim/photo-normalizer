@@ -1,0 +1,20 @@
+test_batch/
+
+.claude
+docs/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+htmlcov/
+
+# uv / packaging
+.venv/
+*.egg-info/
+dist/
+build/
+
+# macOS
+.DS_Store

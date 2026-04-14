@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<title>Photo Normalizer Preview</title>
+<style>
+  body { font-family: sans-serif; margin: 0; background: #f5f5f5; }
+  .tabs { display: flex; background: #222; padding: 8px; gap: 4px; }
+  .tab-btn { padding: 8px 16px; background: #444; color: #fff; border: none; cursor: pointer; border-radius: 4px; font-size: 14px; }
+  .tab-btn.active { background: #0070f3; }
+  .panel { display: none; padding: 20px; }
+  .panel.active { display: block; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; }
+  .grid-item img { width: 100%; border: 1px solid #ddd; background: #fff; display: block; }
+  .grid-item .caption { font-size: 12px; color: #666; text-align: center; margin-top: 4px; }
+  .ba-selector { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+  .ba-selector button { padding: 4px 12px; cursor: pointer; border: 1px solid #ccc; border-radius: 4px; background: #fff; }
+  .ba-selector button.active { background: #0070f3; color: #fff; border-color: #0070f3; }
+  .ba-container { position: relative; width: 500px; height: 500px; overflow: hidden; border: 1px solid #ccc; cursor: col-resize; user-select: none; background: #fff; }
+  .ba-container img { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; }
+  .ba-after { clip-path: inset(0 50% 0 0); }
+  .ba-divider { position: absolute; top: 0; bottom: 0; left: 50%; width: 3px; background: #0070f3; pointer-events: none; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f0f0f0; font-weight: 600; }
+  tr.warn td { background: #fffbe6; }
+  tr.err td { background: #fff0f0; }
+</style>
+</head>
+<body>
+<div class="tabs">
+  <button class="tab-btn active" onclick="showTab('grid', this)">결과물 격자</button>
+  <button class="tab-btn" onclick="showTab('ba', this)">Before/After</button>
+  <button class="tab-btn" onclick="showTab('metrics', this)">보정 수치</button>
+</div>
+
+<div id="tab-grid" class="panel active">
+  <div class="grid">
+    {% for item in success_items %}
+    <div class="grid-item">
+      <img src="{{ item.normalized_rel }}" alt="{{ item.filename }}" loading="lazy">
+      <div class="caption">{{ item.filename }}</div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+<div id="tab-ba" class="panel">
+  <div class="ba-selector">
+    {% for item in success_items %}
+    <button onclick="selectBA({{ loop.index0 }})" id="ba-btn-{{ loop.index0 }}"{% if loop.first %} class="active"{% endif %}>{{ item.filename }}</button>
+    {% endfor %}
+  </div>
+  <div class="ba-container" id="ba-container">
+    <img id="ba-before" src="{{ success_items[0].original_rel if success_items else '' }}" alt="before">
+    <img id="ba-after" class="ba-after" src="{{ success_items[0].normalized_rel if success_items else '' }}" alt="after">
+    <div class="ba-divider" id="ba-divider"></div>
+  </div>
+</div>
+
+<div id="tab-metrics" class="panel">
+  <table>
+    <thead>
+      <tr>
+        <th>파일</th><th>원본 프로파일</th><th>배경 밝기</th><th>밝기 보정</th>
+        <th>각도 차이</th><th>각도 보정</th><th>확대 배율</th><th>경고/오류</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for item in items %}
+      <tr class="{{ 'err' if item.error else ('warn' if item.warnings else '') }}">
+        <td>{{ item.filename }}</td>
+        <td>{{ item.measurements.get('original_profile', '-') }}</td>
+        <td>{{ item.measurements.get('original_brightness_mean', '-') }}</td>
+        <td>{{ item.measurements.get('brightness_delta', '-') }}</td>
+        <td>{{ item.measurements.get('angle_delta', '-') }}</td>
+        <td>{{ 'yes' if item.measurements.get('angle_corrected') else '-' }}</td>
+        <td>{{ item.measurements.get('resize_scale', '-') }}</td>
+        <td>
+          {% if item.error %}{{ item.error }}
+          {% elif item.warnings %}{{ item.warnings | join('<br>') | safe }}
+          {% else %}-{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<script>
+const ITEMS = {{ items_json | tojson }};
+
+function showTab(name, btn) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function selectBA(idx) {
+  const item = ITEMS[idx];
+  document.getElementById('ba-before').src = item.original_rel;
+  document.getElementById('ba-after').src = item.normalized_rel;
+  document.querySelectorAll('.ba-selector button').forEach((b, i) => {
+    b.className = i === idx ? 'active' : '';
+  });
+  setSlider(50);
+}
+
+function setSlider(pct) {
+  document.querySelector('.ba-after').style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
+  document.getElementById('ba-divider').style.left = pct + '%';
+}
+
+(function() {
+  const container = document.getElementById('ba-container');
+  let active = false;
+  function handle(clientX) {
+    const rect = container.getBoundingClientRect();
+    setSlider(Math.max(0, Math.min(100, (clientX - rect.left) / rect.width * 100)));
+  }
+  container.addEventListener('mousedown', e => { active = true; handle(e.clientX); });
+  window.addEventListener('mousemove', e => { if (active) handle(e.clientX); });
+  window.addEventListener('mouseup', () => { active = false; });
+  container.addEventListener('touchstart', e => { active = true; handle(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchmove', e => { if (active) handle(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', () => { active = false; });
+})();
+</script>
+</body>
+</html>
