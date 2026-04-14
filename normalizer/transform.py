@@ -34,8 +34,8 @@ def compute_crop_rect(
     scale_x = (canvas_width * target_ratio) / width
     scale_y = (canvas_height * target_ratio) / height
     scale = min(scale_x, scale_y)
-    size_w = int(round(canvas_width / scale))
-    size_h = int(round(canvas_height / scale))
+    size_w = round(canvas_width / scale)
+    size_h = round(canvas_height / scale)
     crop_x = max(0, subject_cx - size_w // 2)
     crop_y = max(0, subject_cy - size_h // 2)
     return crop_x, crop_y, size_w, size_h, scale
@@ -143,22 +143,7 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
 
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_bright")
     if not record.config.dry_run:
-        if record.config.brightness_method == "level":
-            white_pct = 100.0
-            if reference_bg > 0:
-                white_pct = max(0.0, (image_bg / reference_bg) * 100.0)
-            else:
-                white_pct = 0.0
-            _run(
-                [
-                    "magick",
-                    str(record.work_path),
-                    "-level",
-                    f"0%,{white_pct:.2f}%",
-                    str(output_path),
-                ]
-            )
-        elif record.config.brightness_method == "brightness-contrast":
+        def run_brightness_contrast() -> None:
             brightness_delta = int((reference_bg - image_bg) / 255.0 * 100)
             _run(
                 [
@@ -169,6 +154,24 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
                     str(output_path),
                 ]
             )
+
+        if record.config.brightness_method == "level":
+            if reference_bg <= 0 or image_bg > reference_bg:
+                run_brightness_contrast()
+            else:
+                white_pct = (image_bg / reference_bg) * 100.0
+                white_pct = min(100.0, max(0.01, white_pct))
+                _run(
+                    [
+                        "magick",
+                        str(record.work_path),
+                        "-level",
+                        f"0%,{white_pct:.2f}%",
+                        str(output_path),
+                    ]
+                )
+        elif record.config.brightness_method == "brightness-contrast":
+            run_brightness_contrast()
         else:
             raise ValueError(
                 f"Unsupported brightness_method: {record.config.brightness_method!r}. "
