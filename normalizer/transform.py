@@ -182,35 +182,35 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
     if abs(scale - 1.0) < 0.005 and image_bg > 0:
         return record
 
+    def run_brightness_contrast() -> None:
+        brightness_delta = int((reference_bg - image_bg) / 255.0 * 100)
+        _run(
+            [
+                "magick",
+                str(record.work_path),
+                "-brightness-contrast",
+                f"{brightness_delta},0",
+                str(output_path),
+            ]
+        )
+
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_bright")
+    if record.config.brightness_method == "level" and reference_bg <= 0:
+        record.warnings.append("reference_bg <= 0; skipping brightness level adjustment")
+        return record
+
     if not record.config.dry_run:
-        def run_brightness_contrast() -> None:
-            brightness_delta = int((reference_bg - image_bg) / 255.0 * 100)
+        if record.config.brightness_method == "level":
+            white_pct = max(0.0, (image_bg / reference_bg) * 100.0)
             _run(
                 [
                     "magick",
                     str(record.work_path),
-                    "-brightness-contrast",
-                    f"{brightness_delta},0",
+                    "-level",
+                    f"0%,{white_pct:.2f}%",
                     str(output_path),
                 ]
             )
-
-        if record.config.brightness_method == "level":
-            if reference_bg <= 0 or image_bg > reference_bg:
-                run_brightness_contrast()
-            else:
-                white_pct = (image_bg / reference_bg) * 100.0
-                white_pct = min(100.0, max(0.01, white_pct))
-                _run(
-                    [
-                        "magick",
-                        str(record.work_path),
-                        "-level",
-                        f"0%,{white_pct:.2f}%",
-                        str(output_path),
-                    ]
-                )
         elif record.config.brightness_method == "brightness-contrast":
             run_brightness_contrast()
         else:

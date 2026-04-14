@@ -1,0 +1,40 @@
+<h2>어떤 형태의 앱을 만들까요?</h2>
+<p class="subtitle">기술 스택과 사용 경험이 크게 달라집니다.</p>
+
+<div class="options">
+  <div class="option" data-choice="a" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>로컬 웹 앱</h3>
+      <p>FastAPI 서버 + 브라우저 UI (React 또는 순수 HTML/JS)</p>
+      <div class="pros-cons" style="margin-top:10px;font-size:0.85em">
+        <div class="pros"><h4>장점</h4><ul><li>기존 Python 코드 그대로 재사용</li><li>UI 자유도 최고</li><li>Before/After 슬라이더 등 기존 preview 기능 계승</li></ul></div>
+        <div class="cons"><h4>단점</h4><ul><li>브라우저에서 열어야 함 (앱 아이콘 없음)</li><li>서버 별도 실행 필요</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="b" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>데스크톱 앱 (Electron / Tauri)</h3>
+      <p>HTML/CSS/JS 프론트 + Python 백엔드를 subprocess로 호출</p>
+      <div class="pros-cons" style="margin-top:10px;font-size:0.85em">
+        <div class="pros"><h4>장점</h4><ul><li>앱 아이콘, 트레이, 파인더 통합</li><li>Dock에 올릴 수 있음</li></ul></div>
+        <div class="cons"><h4>단점</h4><ul><li>Node.js / Rust 빌드 환경 추가 필요</li><li>Python ↔ 앱 간 통신 설계 필요</li><li>배포 복잡</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="c" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>Python GUI 앱 (PyQt6)</h3>
+      <p>순수 Python 스택, QWidget 기반 네이티브 느낌 UI</p>
+      <div class="pros-cons" style="margin-top:10px;font-size:0.85em">
+        <div class="pros"><h4>장점</h4><ul><li>uv로 의존성 한 번에 관리</li><li>기존 코드 직접 import</li><li>.app 번들 생성 가능 (PyInstaller)</li></ul></div>
+        <div class="cons"><h4>단점</h4><ul><li>Before/After 슬라이더 같은 UI 구현이 번거로움</li><li>웹 대비 UI 표현력 제한</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
