@@ -19,6 +19,11 @@ def compute_crop_rect(
         raise ValueError(
             f"bbox width and height must be > 0, got width={width}, height={height} for bbox={bbox!r}"
         )
+    if canvas_width <= 0 or canvas_height <= 0:
+        raise ValueError(
+            "canvas_width and canvas_height must be > 0, "
+            f"got canvas_width={canvas_width}, canvas_height={canvas_height}"
+        )
     subject_cx = x + width // 2
     subject_cy = y + height // 2
     scale_x = (canvas_width * target_ratio) / width
@@ -135,8 +140,10 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
     if not record.config.dry_run:
         if record.config.brightness_method == "level":
             white_pct = 100.0
-            if image_bg > 0:
-                white_pct = max(0.0, min(100.0, (reference_bg / image_bg) * 100.0))
+            if reference_bg > 0:
+                white_pct = max(0.0, (image_bg / reference_bg) * 100.0)
+            else:
+                white_pct = 0.0
             _run(
                 [
                     "magick",

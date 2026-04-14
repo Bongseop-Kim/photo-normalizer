@@ -51,3 +51,17 @@ def test_crop_rect_rejects_non_positive_bbox_dimensions(bbox):
             canvas_height=1000,
             target_ratio=0.80,
         )
+
+
+@pytest.mark.parametrize(
+    ("canvas_width", "canvas_height"),
+    [(0, 1000), (1000, 0), (-1, 1000), (1000, -1)],
+)
+def test_crop_rect_rejects_non_positive_canvas_dimensions(canvas_width, canvas_height):
+    with pytest.raises(ValueError, match="canvas_width and canvas_height must be > 0"):
+        compute_crop_rect(
+            bbox=(10, 20, 50, 50),
+            canvas_width=canvas_width,
+            canvas_height=canvas_height,
+            target_ratio=0.80,
+        )
