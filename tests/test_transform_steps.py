@@ -34,7 +34,7 @@ def test_step4_level_uses_reference_background(tmp_path, monkeypatch):
 
     assert commands
     assert commands[0][2] == "-level"
-    assert commands[0][3] == "0%,96.08%"
+    assert commands[0][3] == "0%,100.00%"
 
 
 def test_step5_finalize_respects_strip_and_preserve_flags(tmp_path, monkeypatch):

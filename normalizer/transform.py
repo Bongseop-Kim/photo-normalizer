@@ -15,6 +15,10 @@ def compute_crop_rect(
     target_ratio: float,
 ) -> tuple[int, int, int, int, float]:
     x, y, width, height = bbox
+    if width <= 0 or height <= 0:
+        raise ValueError(
+            f"bbox width and height must be > 0, got width={width}, height={height} for bbox={bbox!r}"
+        )
     subject_cx = x + width // 2
     subject_cy = y + height // 2
     scale_x = (canvas_width * target_ratio) / width
