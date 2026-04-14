@@ -97,6 +97,7 @@ def test_step3_crop_resize_clamps_negative_offsets(tmp_path, monkeypatch):
     record.config.canvas_width = 1000
     commands: list[list[str]] = []
 
+    monkeypatch.setattr("normalizer.transform._get_image_size", lambda path: (500, 500))
     monkeypatch.setattr("normalizer.transform._run", lambda cmd: commands.append(cmd))
 
     step3_crop_resize(record, bbox=(0, 0, 400, 400))
@@ -104,6 +105,33 @@ def test_step3_crop_resize_clamps_negative_offsets(tmp_path, monkeypatch):
     assert commands
     assert commands[0][2] == "-crop"
     assert commands[0][3] == "500x500+0+0"
+
+
+def test_step3_crop_resize_clamps_crop_to_image_bounds(tmp_path, monkeypatch):
+    record = _record(tmp_path)
+    commands: list[list[str]] = []
+
+    monkeypatch.setattr("normalizer.transform._get_image_size", lambda path: (700, 800))
+    monkeypatch.setattr("normalizer.transform._run", lambda cmd: commands.append(cmd))
+
+    step3_crop_resize(record, bbox=(500, 600, 200, 200))
+
+    assert record.measurements["crop_applied"] == [450, 550, 250, 250]
+    assert commands
+    assert commands[0][3] == "250x250+450+550"
+
+
+def test_step4_non_positive_brightness_still_runs_adjustment(tmp_path, monkeypatch):
+    record = _record(tmp_path)
+    record.measurements["original_brightness_mean"] = 0.0
+    commands: list[list[str]] = []
+
+    monkeypatch.setattr("normalizer.transform._run", lambda cmd: commands.append(cmd))
+
+    step4_brightness(record, reference_bg=245.0)
+
+    assert record.measurements["brightness_delta"] == 245.0
+    assert commands
 
 
 def test_run_raises_clear_error_on_timeout(monkeypatch):

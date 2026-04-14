@@ -9,6 +9,8 @@ def test_crop_rect_size():
         canvas_width=1000,
         canvas_height=1000,
         target_ratio=0.80,
+        image_width=1200,
+        image_height=1400,
     )
     assert abs(size - 875) < 2
 
@@ -20,6 +22,8 @@ def test_crop_rect_centered_on_subject():
         canvas_width=1000,
         canvas_height=1000,
         target_ratio=0.80,
+        image_width=1400,
+        image_height=1400,
     )
     subject_cx = bbox[0] + bbox[2] // 2
     subject_cy = bbox[1] + bbox[3] // 2
@@ -35,6 +39,8 @@ def test_crop_rect_clamps_negative_offsets_to_zero():
         canvas_width=1000,
         canvas_height=1000,
         target_ratio=0.80,
+        image_width=500,
+        image_height=500,
     )
 
     assert (cx, cy) == (0, 0)
@@ -54,6 +60,22 @@ def test_brightness_scale_zero_denominator():
     assert compute_brightness_scale(0.0, 245.0) == 1.0
 
 
+def test_crop_rect_clamps_to_image_bounds():
+    cx, cy, size_w, size_h, _ = compute_crop_rect(
+        bbox=(500, 600, 200, 200),
+        canvas_width=1000,
+        canvas_height=1000,
+        target_ratio=0.80,
+        image_width=700,
+        image_height=800,
+    )
+
+    assert (size_w, size_h) == (250, 250)
+    assert (cx, cy) == (450, 550)
+    assert cx + size_w == 700
+    assert cy + size_h == 800
+
+
 @pytest.mark.parametrize("bbox", [(10, 20, 0, 50), (10, 20, 50, 0), (10, 20, -5, 50), (10, 20, 50, -5)])
 def test_crop_rect_rejects_non_positive_bbox_dimensions(bbox):
     with pytest.raises(ValueError, match="bbox width and height must be > 0"):
@@ -62,6 +84,8 @@ def test_crop_rect_rejects_non_positive_bbox_dimensions(bbox):
             canvas_width=1000,
             canvas_height=1000,
             target_ratio=0.80,
+            image_width=1200,
+            image_height=1200,
         )
 
 
@@ -76,15 +100,19 @@ def test_crop_rect_rejects_non_positive_canvas_dimensions(canvas_width, canvas_h
             canvas_width=canvas_width,
             canvas_height=canvas_height,
             target_ratio=0.80,
+            image_width=1200,
+            image_height=1200,
         )
 
 
-@pytest.mark.parametrize("target_ratio", [0.0, -0.5, float("inf"), float("-inf"), float("nan")])
-def test_crop_rect_rejects_non_positive_or_non_finite_target_ratio(target_ratio):
-    with pytest.raises(ValueError, match="target_ratio must be a positive finite number"):
+@pytest.mark.parametrize("target_ratio", [0.0, -0.5, 1.01, float("inf"), float("-inf"), float("nan")])
+def test_crop_rect_rejects_out_of_range_target_ratio(target_ratio):
+    with pytest.raises(ValueError, match="target_ratio must be > 0 and <= 1.0"):
         compute_crop_rect(
             bbox=(10, 20, 50, 50),
             canvas_width=1000,
             canvas_height=1000,
             target_ratio=target_ratio,
+            image_width=1200,
+            image_height=1200,
         )

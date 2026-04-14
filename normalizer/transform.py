@@ -14,6 +14,8 @@ def compute_crop_rect(
     canvas_width: int,
     canvas_height: int,
     target_ratio: float,
+    image_width: int,
+    image_height: int,
 ) -> tuple[int, int, int, int, float]:
     x, y, width, height = bbox
     if width <= 0 or height <= 0:
@@ -25,9 +27,14 @@ def compute_crop_rect(
             "canvas_width and canvas_height must be > 0, "
             f"got canvas_width={canvas_width}, canvas_height={canvas_height}"
         )
-    if not math.isfinite(target_ratio) or target_ratio <= 0:
+    if image_width <= 0 or image_height <= 0:
         raise ValueError(
-            f"target_ratio must be a positive finite number, got target_ratio={target_ratio!r}"
+            "image_width and image_height must be > 0, "
+            f"got image_width={image_width}, image_height={image_height}"
+        )
+    if not math.isfinite(target_ratio) or not (0 < target_ratio <= 1.0):
+        raise ValueError(
+            f"target_ratio must be > 0 and <= 1.0, got target_ratio={target_ratio!r}"
         )
     subject_cx = x + width // 2
     subject_cy = y + height // 2
@@ -36,8 +43,8 @@ def compute_crop_rect(
     scale = min(scale_x, scale_y)
     size_w = round(canvas_width / scale)
     size_h = round(canvas_height / scale)
-    crop_x = max(0, subject_cx - size_w // 2)
-    crop_y = max(0, subject_cy - size_h // 2)
+    crop_x = max(0, min(subject_cx - size_w // 2, image_width - size_w))
+    crop_y = max(0, min(subject_cy - size_h // 2, image_height - size_h))
     return crop_x, crop_y, size_w, size_h, scale
 
 
@@ -80,6 +87,37 @@ def _run(cmd: list[str]) -> None:
         ) from exc
 
 
+def _get_image_size(image_path: Path) -> tuple[int, int]:
+    cmd = [
+        "magick",
+        "identify",
+        "-format",
+        "%w %h",
+        str(image_path),
+    ]
+    try:
+        result = subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            timeout=IMAGE_MAGICK_TIMEOUT,
+        )
+    except subprocess.CalledProcessError as exc:
+        stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
+        raise RuntimeError(
+            f"Failed to read image size for {image_path}: {stderr.strip() if stderr else exc}"
+        ) from exc
+    except subprocess.TimeoutExpired as exc:
+        raise RuntimeError(f"Timed out reading image size for {image_path} after {exc.timeout}s") from exc
+
+    output = result.stdout.decode(errors="replace").strip()
+    try:
+        width_text, height_text = output.split()
+        return int(width_text), int(height_text)
+    except ValueError as exc:
+        raise RuntimeError(f"Unexpected image size output for {image_path}: {output!r}") from exc
+
+
 def step2_rotate(record: ImageRecord, reference_angle: float) -> ImageRecord:
     original_angle = record.measurements.get("original_angle", 0.0)
     delta = reference_angle - original_angle
@@ -100,11 +138,14 @@ def step2_rotate(record: ImageRecord, reference_angle: float) -> ImageRecord:
 def step3_crop_resize(record: ImageRecord, bbox: tuple[int, int, int, int]) -> ImageRecord:
     canvas_w = record.config.canvas_width
     canvas_h = record.config.canvas_height
+    image_width, image_height = _get_image_size(record.work_path)
     crop_x, crop_y, size_w, size_h, scale = compute_crop_rect(
         bbox,
         canvas_w,
         canvas_h,
         record.config.target_ratio,
+        image_width,
+        image_height,
     )
 
     record.measurements["crop_applied"] = [crop_x, crop_y, size_w, size_h]
@@ -138,7 +179,7 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
     scale = compute_brightness_scale(image_bg, reference_bg)
     record.measurements["brightness_delta"] = round(reference_bg - image_bg, 2)
 
-    if abs(scale - 1.0) < 0.005:
+    if abs(scale - 1.0) < 0.005 and image_bg > 0:
         return record
 
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_bright")
