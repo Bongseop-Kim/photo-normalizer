@@ -109,7 +109,7 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
                     str(output_path),
                 ]
             )
-        else:
+        elif record.config.brightness_method == "brightness-contrast":
             brightness_delta = int((reference_bg - image_bg) / 255.0 * 100)
             _run(
                 [
@@ -119,6 +119,11 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
                     f"{brightness_delta},0",
                     str(output_path),
                 ]
+            )
+        else:
+            raise ValueError(
+                f"Unsupported brightness_method: {record.config.brightness_method!r}. "
+                "Expected one of: 'level', 'brightness-contrast'."
             )
         record.work_path = output_path
     return record
@@ -144,6 +149,8 @@ def step5_finalize(record: ImageRecord, output_path: Path) -> ImageRecord:
         args.append("-strip")
     if record.config.preserve_icc:
         args.extend(["-profile", record.config.icc_profile])
+    elif not record.config.strip_exif:
+        args.extend(["+profile", "ICC"])
     args.append(str(output_path))
     _run(args)
     return record

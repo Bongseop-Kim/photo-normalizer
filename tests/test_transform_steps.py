@@ -49,6 +49,7 @@ def test_step5_finalize_respects_strip_and_preserve_flags(tmp_path, monkeypatch)
 
     assert commands
     assert "-strip" not in commands[0]
+    assert "+profile" in commands[0]
     assert "-profile" not in commands[0]
 
 
