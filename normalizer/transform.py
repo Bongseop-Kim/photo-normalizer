@@ -10,22 +10,25 @@ IMAGE_MAGICK_TIMEOUT = 30
 
 def compute_crop_rect(
     bbox: tuple[int, int, int, int],
-    canvas_size: int,
+    canvas_width: int,
+    canvas_height: int,
     target_ratio: float,
 ) -> tuple[int, int, int, int, float]:
     x, y, width, height = bbox
     subject_cx = x + width // 2
     subject_cy = y + height // 2
-    target_pixels = canvas_size * target_ratio
-    scale = target_pixels / max(width, height)
-    size = int(round(canvas_size / scale))
-    crop_x = subject_cx - size // 2
-    crop_y = subject_cy - size // 2
-    return crop_x, crop_y, size, size, scale
+    scale_x = (canvas_width * target_ratio) / width
+    scale_y = (canvas_height * target_ratio) / height
+    scale = min(scale_x, scale_y)
+    size_w = int(round(canvas_width / scale))
+    size_h = int(round(canvas_height / scale))
+    crop_x = subject_cx - size_w // 2
+    crop_y = subject_cy - size_h // 2
+    return crop_x, crop_y, size_w, size_h, scale
 
 
 def compute_brightness_scale(image_bg: float, reference_bg: float) -> float:
-    if image_bg == 0:
+    if image_bg <= 0:
         return 1.0
     return reference_bg / image_bg
 
@@ -33,11 +36,33 @@ def compute_brightness_scale(image_bg: float, reference_bg: float) -> float:
 def _run(cmd: list[str]) -> None:
     try:
         subprocess.run(cmd, check=True, capture_output=True, timeout=IMAGE_MAGICK_TIMEOUT)
+    except subprocess.CalledProcessError as exc:
+        image_path = cmd[1] if len(cmd) > 1 else "unknown"
+        stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
+        stdout = exc.stdout.decode(errors="replace") if isinstance(exc.stdout, bytes) else exc.stdout
+        details = []
+        if stderr:
+            details.append(f"stderr: {stderr.strip()}")
+        if stdout:
+            details.append(f"stdout: {stdout.strip()}")
+        details_text = f" ({'; '.join(details)})" if details else ""
+        raise RuntimeError(
+            "ImageMagick command failed "
+            f"for {image_path} with exit code {exc.returncode}: {' '.join(cmd)}{details_text}"
+        ) from exc
     except subprocess.TimeoutExpired as exc:
         image_path = cmd[1] if len(cmd) > 1 else "unknown"
+        stderr = exc.stderr.decode(errors="replace") if isinstance(exc.stderr, bytes) else exc.stderr
+        stdout = exc.output.decode(errors="replace") if isinstance(exc.output, bytes) else exc.output
+        details = []
+        if stderr:
+            details.append(f"stderr: {stderr.strip()}")
+        if stdout:
+            details.append(f"stdout: {stdout.strip()}")
+        details_text = f" ({'; '.join(details)})" if details else ""
         raise RuntimeError(
             "ImageMagick command timed out "
-            f"for {image_path}: {' '.join(cmd)}"
+            f"after {exc.timeout}s for {image_path}: {' '.join(cmd)}{details_text}"
         ) from exc
 
 
@@ -59,10 +84,16 @@ def step2_rotate(record: ImageRecord, reference_angle: float) -> ImageRecord:
 
 
 def step3_crop_resize(record: ImageRecord, bbox: tuple[int, int, int, int]) -> ImageRecord:
-    canvas = record.config.canvas_width
-    crop_x, crop_y, size, _, scale = compute_crop_rect(bbox, canvas, record.config.target_ratio)
+    canvas_w = record.config.canvas_width
+    canvas_h = record.config.canvas_height
+    crop_x, crop_y, size_w, size_h, scale = compute_crop_rect(
+        bbox,
+        canvas_w,
+        canvas_h,
+        record.config.target_ratio,
+    )
 
-    record.measurements["crop_applied"] = [crop_x, crop_y, size, size]
+    record.measurements["crop_applied"] = [crop_x, crop_y, size_w, size_h]
     record.measurements["resize_scale"] = round(scale, 4)
 
     if scale > record.config.max_upscale:
@@ -77,10 +108,10 @@ def step3_crop_resize(record: ImageRecord, bbox: tuple[int, int, int, int]) -> I
                 "magick",
                 str(record.work_path),
                 "-crop",
-                f"{size}x{size}{crop_x:+d}{crop_y:+d}",
+                f"{size_w}x{size_h}{crop_x:+d}{crop_y:+d}",
                 "+repage",
                 "-resize",
-                f"{canvas}x{canvas}!",
+                f"{canvas_w}x{canvas_h}!",
                 str(output_path),
             ]
         )
@@ -99,7 +130,9 @@ def step4_brightness(record: ImageRecord, reference_bg: float) -> ImageRecord:
     output_path = record.work_path.with_stem(f"{record.work_path.stem}_bright")
     if not record.config.dry_run:
         if record.config.brightness_method == "level":
-            white_pct = max(0.0, min(100.0, (reference_bg / 255.0) * 100.0))
+            white_pct = 100.0
+            if image_bg > 0:
+                white_pct = max(0.0, min(100.0, (reference_bg / image_bg) * 100.0))
             _run(
                 [
                     "magick",
