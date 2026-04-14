@@ -103,6 +103,15 @@ def test_pipeline_rejects_nested_output_dir(batch):
         run_pipeline(batch, output_dir, NormalizerConfig(dry_run=True))
 
 
+def test_pipeline_rejects_non_empty_output_dir(batch, tmp_path):
+    output_dir = tmp_path / "norm"
+    output_dir.mkdir()
+    (output_dir / "stale.jpg").write_bytes(b"stale")
+
+    with pytest.raises(ValueError, match="output_dir must be empty"):
+        run_pipeline(batch, output_dir, NormalizerConfig(dry_run=True))
+
+
 def test_pipeline_redetect_uses_same_detection_parameters(tmp_path, monkeypatch):
     from normalizer import pipeline as pipeline_module
 

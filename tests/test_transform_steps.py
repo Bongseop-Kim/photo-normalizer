@@ -6,7 +6,7 @@ import subprocess
 import pytest
 
 from normalizer.models import ImageRecord, NormalizerConfig
-from normalizer.transform import _run, step2_rotate, step4_brightness, step5_finalize
+from normalizer.transform import _run, step2_rotate, step3_crop_resize, step4_brightness, step5_finalize
 
 
 def _record(tmp_path) -> ImageRecord:
@@ -61,6 +61,20 @@ def test_step2_rotate_dry_run_does_not_mark_angle_corrected(tmp_path):
 
     assert record.measurements["angle_corrected"] is False
     assert record.work_path == tmp_path / "work.jpg"
+
+
+def test_step3_crop_resize_formats_negative_offsets(tmp_path, monkeypatch):
+    record = _record(tmp_path)
+    record.config.canvas_width = 1000
+    commands: list[list[str]] = []
+
+    monkeypatch.setattr("normalizer.transform._run", lambda cmd: commands.append(cmd))
+
+    step3_crop_resize(record, bbox=(0, 0, 400, 400))
+
+    assert commands
+    assert commands[0][2] == "-crop"
+    assert commands[0][3] == "500x500-50-50"
 
 
 def test_run_raises_clear_error_on_timeout(monkeypatch):

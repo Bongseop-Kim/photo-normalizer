@@ -3,7 +3,7 @@ import pytest
 import subprocess
 from pathlib import Path
 
-from normalizer.color import detect_icc_profile, step0_color_normalize
+from normalizer.color import IMAGE_MAGICK_TIMEOUT, detect_icc_profile, step0_color_normalize
 from normalizer.models import ImageRecord, NormalizerConfig
 
 
@@ -13,6 +13,7 @@ def _make_srgb_jpeg(path: Path, icc: str) -> None:
     subprocess.run(
         ["magick", "-size", "100x100", "xc:white", "-profile", icc, str(path)],
         check=True,
+        timeout=IMAGE_MAGICK_TIMEOUT,
     )
 
 

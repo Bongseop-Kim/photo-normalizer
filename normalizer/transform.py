@@ -77,7 +77,7 @@ def step3_crop_resize(record: ImageRecord, bbox: tuple[int, int, int, int]) -> I
                 "magick",
                 str(record.work_path),
                 "-crop",
-                f"{size}x{size}+{crop_x}+{crop_y}",
+                f"{size}x{size}{crop_x:+d}{crop_y:+d}",
                 "+repage",
                 "-resize",
                 f"{canvas}x{canvas}!",
